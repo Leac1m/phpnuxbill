@@ -1,0 +1,68 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: nuxbill-app
+    ports:
+      - "80:80"
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - nuxbill-net
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: nuxbill-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./install/phpnuxbill.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nuxbill-net
+    restart: unless-stopped
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: nuxbill-cron
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - ./:/var/www/html
+    command: >
+      sh -c "cd /var/www/html/system && while true; do php cron.php; sleep 120; done"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - nuxbill-net
+    restart: unless-stopped
+
+volumes:
+  mariadb_data:
+
+networks:
+  nuxbill-net:
+    driver: bridge

@@ -49,6 +49,9 @@ system/devices/**
 !system/devices/MikrotikPppoeCustom.php
 !system/devices/MikrotikHotspot.php
 /.vs
+.env
+.env.local
+.env.*.local
 docker-compose.yml
 docs/**
 !docs/*.html

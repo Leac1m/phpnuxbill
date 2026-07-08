@@ -1,0 +1,7 @@
+# Clean URL routing — Apache handles the rewrite via .htaccess.
+# Access as /route or /route/action?query=val — no ?_route= needed.
+# Swap :80 for your domain to enable auto TLS.
+
+:80 {
+    reverse_proxy app:80
+}
