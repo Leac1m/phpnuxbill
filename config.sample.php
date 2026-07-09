@@ -12,11 +12,12 @@ define('APP_URL', $protocol . $host . $baseDir);
 
 $_app_stage = 'Live'; # Do not change this
 
-$db_host    = "localhost"; # Database Host
+$db_host    = getenv('DB_HOST') ?: "mariadb"; # Database Host
 $db_port    = "";   # Database Port. Keep it blank if you are un sure.
-$db_user    = "root"; # Database Username
-$db_pass    = ""; # Database Password
-$db_name    = "phpnuxbill"; # Database Name
+$db_user    = getenv('MYSQL_USER') ?: "nuxbill"; # Database Username
+$db_pass    = getenv('MYSQL_PASSWORD') ?: "test_nuxbill_123"; # Database Password
+$db_name    = getenv('MYSQL_DATABASE') ?: "nuxbill"; # Database Name
+
 
 
 
