@@ -1,6 +1,30 @@
 <?php
 require_once 'init.php';
 
+$portal = $_GET['portal'] ?? '';
+$routerIp = $_GET['router'] ?? '';
+
+if ($portal == '1') {
+    global $config;
+    $serverIp = parse_url($config['app_url'] ?? 'http://'.$_SERVER['HTTP_HOST'], PHP_URL_HOST);
+    if (!$serverIp || $serverIp == 'localhost') {
+        $serverIp = $_SERVER['HTTP_HOST'];
+    }
+    header('Content-Type: text/html');
+    echo <<<HTML
+<html>
+<head>
+<meta http-equiv="refresh" content="0; url=http://{$serverIp}/index.php?_route=login&nux-mac=$(mac)&nux-ip=$(ip)&nux-router={$routerIp}">
+<title>Redirecting to Billing Portal...</title>
+</head>
+<body>
+<p>Redirecting you to the Internet portal. <a href="http://{$serverIp}/index.php?_route=login&nux-mac=$(mac)&nux-ip=$(ip)&nux-router={$routerIp}">Click here if not redirected automatically.</a></p>
+</body>
+</html>
+HTML;
+    exit;
+}
+
 $token = $_GET['token'] ?? '';
 if (empty($token)) {
     die("Invalid token.");
@@ -82,4 +106,8 @@ echo <<<RSC
 /user group add name=phpnuxbill policy=api,read,write,policy,test
 /user add name=phpnuxbill group=phpnuxbill password="$api_password"
 /interface wireguard enable wg-nuxbill
+/ip hotspot walled-garden ip add action=accept dst-address="$serverIp" comment="phpnuxbill_auto_provision"
+/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="hotspot/login.html"
+/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="flash/hotspot/login.html"
 RSC;
+

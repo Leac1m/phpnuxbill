@@ -106,7 +106,7 @@ docker compose -f docker-compose.test.yml up -d
 ## Other
 
 - Lint, typecheck, and CI are currently not set up.
-- **Testing:** We now encourage testing for critical workflows (e.g., auto-provisioning, billing, IP allocation). **Important:** To prevent environment issues (like missing PHP extensions), tests that can be run inside Docker containers *must* be run using Docker, rather than installing dependencies on the host machine.
+- **Testing:** We now require writing tests immediately following a feature update and running the test suite to catch bugs and regressions. Agents should only write recommended tests directly related to the new feature being implemented. **Important:** To prevent environment issues (like missing PHP extensions), tests that can be run inside Docker containers *must* be run using Docker, rather than installing dependencies on the host machine.
   - **PHPUnit:** Placed in `tests/Unit/` and `tests/Integration/`. Run via Docker: `docker exec -it nuxbill-app bash -c "./phpunit.phar"` (or install composer in the container).
   - **Node.js (Jest):** Used for sidecar APIs (e.g., `wireguard-api/tests/`). Run within the sidecar container environment.
   - **E2E (Playwright):** Placed in `tests/e2e/`. Use for testing UI polling and complex admin flows.
