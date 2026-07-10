@@ -101,6 +101,51 @@ switch ($action) {
         break;
 
 
+    case 'generate_token':
+        header('Content-Type: application/json');
+        try {
+            ORM::raw_execute("CREATE TABLE IF NOT EXISTS `tbl_provisioning_tokens` (
+                `id` int NOT NULL AUTO_INCREMENT,
+                `token` varchar(64) NOT NULL,
+                `expires_at` datetime NOT NULL,
+                `assigned_ip` varchar(32) NOT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        } catch(Exception $e) {}
+        
+        $token = bin2hex(random_bytes(16));
+        $expires = date('Y-m-d H:i:s', time() + 3600);
+        
+        $last_router = ORM::for_table('tbl_routers')->where_like('ip_address', '10.66.66.%')->order_by_desc('id')->find_one();
+        $next_ip = '10.66.66.2';
+        if ($last_router) {
+            $parts = explode('.', $last_router->ip_address);
+            if (count($parts) == 4) {
+                $next_ip = '10.66.66.' . ($parts[3] + 1);
+            }
+        }
+        
+        $d = ORM::for_table('tbl_provisioning_tokens')->create();
+        $d->token = $token;
+        $d->expires_at = $expires;
+        $d->assigned_ip = $next_ip;
+        $d->save();
+        
+        $url = rtrim($config['app_url'] ?? 'http://'.$_SERVER['HTTP_HOST'], '/') . '/provision.php?token=' . $token;
+        echo json_encode(['status' => 'success', 'token' => $token, 'url' => $url]);
+        exit;
+        
+    case 'check_token':
+        header('Content-Type: application/json');
+        $token = _get('token');
+        $record = ORM::for_table('tbl_provisioning_tokens')->where('token', $token)->find_one();
+        if (!$record) {
+            echo json_encode(['status' => 'connected']);
+        } else {
+            echo json_encode(['status' => 'waiting']);
+        }
+        exit;
+
     case 'edit-post':
         $name = _post('name');
         $ip_address = _post('ip_address');

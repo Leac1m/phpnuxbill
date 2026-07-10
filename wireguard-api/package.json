@@ -1,0 +1,9 @@
+{
+  "name": "wireguard-api",
+  "version": "1.0.0",
+  "description": "Internal API sidecar for WireGuard",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

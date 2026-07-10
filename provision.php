@@ -1,0 +1,74 @@
+<?php
+require_once 'init.php';
+
+$token = $_GET['token'] ?? '';
+if (empty($token)) {
+    die("Invalid token.");
+}
+
+try {
+    ORM::raw_execute("ALTER TABLE `tbl_routers` ADD `wg_public_key` varchar(64) DEFAULT NULL;");
+} catch(Exception $e) {}
+
+$record = ORM::for_table('tbl_provisioning_tokens')
+    ->where('token', $token)
+    ->where_raw('expires_at > NOW()')
+    ->find_one();
+
+if (!$record) {
+    die("Token invalid or expired.");
+}
+
+$assigned_ip = $record->assigned_ip;
+
+$wg_api = "http://nuxbill-wireguard:8080/peers";
+
+$ch = curl_init($wg_api);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'x-api-token: super_secret_token_change_me']);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['ip' => $assigned_ip . '/32']));
+curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+$response = curl_exec($ch);
+$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpcode !== 200) {
+    die("Internal Error: Could not connect to WireGuard API. " . $response);
+}
+
+$data = json_decode($response, true);
+$privKey = $data['private_key'];
+$serverPubKey = $data['server_public_key'];
+$clientPubKey = $data['public_key'];
+
+global $config;
+$serverIp = parse_url($config['app_url'] ?? 'http://'.$_SERVER['HTTP_HOST'], PHP_URL_HOST);
+if (!$serverIp || $serverIp == 'localhost') {
+    $serverIp = $_SERVER['HTTP_HOST'];
+}
+
+$api_password = bin2hex(random_bytes(8));
+
+$r = ORM::for_table('tbl_routers')->create();
+$r->name = 'Auto Router ' . substr($assigned_ip, strrpos($assigned_ip, '.') + 1);
+$r->ip_address = $assigned_ip;
+$r->username = 'phpnuxbill';
+$r->password = $api_password;
+$r->wg_public_key = $clientPubKey;
+$r->status = 'Online';
+$r->enabled = 1;
+$r->save();
+
+$record->delete();
+
+header('Content-Type: text/plain');
+echo <<<RSC
+/interface wireguard add name=wg-nuxbill private-key="$privKey" listen-port=13231
+/ip address add address=$assigned_ip/24 interface=wg-nuxbill
+/interface wireguard peers add interface=wg-nuxbill public-key="$serverPubKey" endpoint-address="$serverIp" endpoint-port=51820 allowed-address=10.66.66.0/24 persistent-keepalive=25s
+/ip service enable api
+/user group add name=phpnuxbill policy=api,read,write,policy,test
+/user add name=phpnuxbill group=phpnuxbill password="$api_password"
+/interface wireguard enable wg-nuxbill
+RSC;

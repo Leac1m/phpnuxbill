@@ -72,12 +72,14 @@ services:
     restart: unless-stopped
 
   wireguard:
-    image: lscr.io/linuxserver/wireguard:latest
+    build:
+      context: ./wireguard-api
     container_name: nuxbill-wireguard
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     environment:
+      - API_TOKEN=super_secret_token_change_me
       - PUID=1000
       - PGID=1000
       - TZ=Etc/UTC

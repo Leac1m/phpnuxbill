@@ -28,9 +28,10 @@
                         </form>
                     </div>
                     <div class="col-md-4">
-                        <a href="{Text::url('')}routers/add" class="btn btn-primary btn-block"><i
-                                class="ion ion-android-add">
-                            </i> {Lang::T('New Router')}</a>
+                        <div class="btn-group btn-group-justified" role="group">
+                            <a href="{Text::url('')}routers/add" class="btn btn-primary"><i class="ion ion-android-add"></i> {Lang::T('New Router')}</a>
+                            <a href="javascript:void(0)" onclick="generateProvisionToken()" class="btn btn-success"><i class="glyphicon glyphicon-flash"></i> Auto-Provision</a>
+                        </div>
                     </div>&nbsp;
                 </div>
                 <div class="table-responsive">
@@ -109,3 +110,50 @@
 
 
 {include file="sections/footer.tpl"}
+
+<div class="modal fade" id="provisionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Auto-Provision Router</h4>
+      </div>
+      <div class="modal-body">
+        <p>Run the following command in your MikroTik terminal to automatically connect it to PHPNuxBill:</p>
+        <textarea id="provisionCmd" class="form-control" rows="3" readonly></textarea>
+        <br>
+        <p class="text-info"><i class="glyphicon glyphicon-refresh" id="prov-spinner"></i> Waiting for router connection...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let checkInterval;
+function generateProvisionToken() {
+    $('#provisionModal').modal('show');
+    $('#provisionCmd').val('Generating command...');
+    
+    $.post('{Text::url('')}routers/generate_token', function(data) {
+        if(data.status == 'success') {
+            $('#provisionCmd').val('/tool fetch url="' + data.url + '" mode=http keep-result=yes dst-path=setup.rsc; /import setup.rsc');
+            
+            if(checkInterval) clearInterval(checkInterval);
+            checkInterval = setInterval(function() {
+                $.get('{Text::url('')}routers/check_token&token=' + data.token, function(res) {
+                    if (res.status == 'connected') {
+                        clearInterval(checkInterval);
+                        alert("Router successfully connected!");
+                        location.reload();
+                    }
+                });
+            }, 3000);
+        } else {
+            $('#provisionCmd').val('Error generating token: ' + data.error);
+        }
+    });
+}
+$('#provisionModal').on('hidden.bs.modal', function () {
+    if(checkInterval) clearInterval(checkInterval);
+});
+</script>
