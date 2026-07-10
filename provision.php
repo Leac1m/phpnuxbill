@@ -118,6 +118,7 @@ foreach ($wg_domains as $domain) {
 
 header('Content-Type: text/plain');
 echo <<<RSC
+:do { /ip address remove [find address="$assigned_ip/24"] } on-error={}
 :do { /interface wireguard remove wg-nuxbill } on-error={}
 /interface wireguard add name=wg-nuxbill private-key="$privKey" listen-port=13231
 /ip address add address=$assigned_ip/24 interface=wg-nuxbill

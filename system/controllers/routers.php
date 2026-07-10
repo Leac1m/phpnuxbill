@@ -49,6 +49,17 @@ switch ($action) {
         run_hook('router_delete'); #HOOK
         $d = ORM::for_table('tbl_routers')->find_one($id);
         if ($d) {
+            // If the router was auto-provisioned, remove it from the WireGuard sidecar
+            if (!empty($d->wg_public_key)) {
+                $wg_api = "http://nuxbill-wireguard:8080/peers/" . urlencode($d->wg_public_key);
+                $ch = curl_init($wg_api);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['x-api-token: super_secret_token_change_me']);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                curl_exec($ch);
+                curl_close($ch);
+            }
             $d->delete();
             r2(getUrl('routers/list'), 's', Lang::T('Data Deleted Successfully'));
         }
