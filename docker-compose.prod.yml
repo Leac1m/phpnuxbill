@@ -71,9 +71,38 @@ services:
       - nuxbill-net
     restart: unless-stopped
 
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: nuxbill-wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - SERVERURL=auto # Auto-detects the host public IP
+      - SERVERPORT=51820
+      - PEERS=1 # Auto-generates configuration for 1 peer (peer1)
+      - PEERDNS=auto
+      - INTERNAL_SUBNET=10.66.66.0/24
+      - ALLOWEDIPS=0.0.0.0/0
+      - LOG_CONFS=true
+    volumes:
+      - wireguard_data:/config
+      - /lib/modules:/lib/modules # Required for wireguard kernel module
+    ports:
+      - "51820:51820/udp"
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      - nuxbill-net
+    restart: unless-stopped
+
 volumes:
   caddy_data:
   mariadb_data:
+  wireguard_data:
 
 networks:
   nuxbill-net:
