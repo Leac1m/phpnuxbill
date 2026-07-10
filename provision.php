@@ -118,15 +118,19 @@ foreach ($wg_domains as $domain) {
 
 header('Content-Type: text/plain');
 echo <<<RSC
+:do { /interface wireguard remove wg-nuxbill } on-error={}
 /interface wireguard add name=wg-nuxbill private-key="$privKey" listen-port=13231
 /ip address add address=$assigned_ip/24 interface=wg-nuxbill
 /interface wireguard peers add interface=wg-nuxbill public-key="$serverPubKey" endpoint-address="$serverIp" endpoint-port=51820 allowed-address=10.66.66.0/24 persistent-keepalive=25s
 /ip service enable api
-/user group add name=phpnuxbill policy=api,read,write,policy,test
-/user add name=phpnuxbill group=phpnuxbill password="$api_password"
+:do { /user group add name=phpnuxbill policy=api,read,write,policy,test } on-error={}
+:do { /user set phpnuxbill password="$api_password" group=phpnuxbill } on-error={ /user add name=phpnuxbill group=phpnuxbill password="$api_password" }
 /interface wireguard enable wg-nuxbill
+:do { /ip hotspot walled-garden ip remove [find comment="phpnuxbill_auto_provision"] } on-error={}
 /ip hotspot walled-garden ip add action=accept dst-address="$serverIp" comment="phpnuxbill_auto_provision"
-$wg_rsc_rules/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="hotspot/login.html"
+:do { /ip hotspot walled-garden remove [find comment="phpnuxbill_gw"] } on-error={}
+$wg_rsc_rules
+/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="hotspot/login.html"
 /tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="flash/hotspot/login.html"
 RSC;
 
