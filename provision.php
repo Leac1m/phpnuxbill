@@ -97,6 +97,25 @@ $r->save();
 
 $record->delete();
 
+global $config, $hook_registered;
+
+$wg_domains = [];
+if (is_array($hook_registered)) {
+    foreach ($hook_registered as $hook) {
+        if ($hook['action'] == 'walled_garden_domains' && is_callable($hook['function'])) {
+            $plugin_domains = call_user_func($hook['function']);
+            if (is_array($plugin_domains)) {
+                $wg_domains = array_merge($wg_domains, $plugin_domains);
+            }
+        }
+    }
+}
+$wg_domains = array_unique($wg_domains);
+$wg_rsc_rules = "";
+foreach ($wg_domains as $domain) {
+    $wg_rsc_rules .= "/ip hotspot walled-garden add action=accept dst-host=\"$domain\" comment=\"phpnuxbill_gw\"\n";
+}
+
 header('Content-Type: text/plain');
 echo <<<RSC
 /interface wireguard add name=wg-nuxbill private-key="$privKey" listen-port=13231
@@ -107,7 +126,7 @@ echo <<<RSC
 /user add name=phpnuxbill group=phpnuxbill password="$api_password"
 /interface wireguard enable wg-nuxbill
 /ip hotspot walled-garden ip add action=accept dst-address="$serverIp" comment="phpnuxbill_auto_provision"
-/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="hotspot/login.html"
+$wg_rsc_rules/tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="hotspot/login.html"
 /tool fetch url="http://$serverIp/provision.php?portal=1&router=$assigned_ip" dst-path="flash/hotspot/login.html"
 RSC;
 

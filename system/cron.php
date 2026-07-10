@@ -241,6 +241,57 @@ if ($config['router_check']) {
     echo "Router monitoring finished checking.\n";
 }
 
+$syncFile = "$CACHE_PATH/wg_sync_last_run.txt";
+$lastSync = file_exists($syncFile) ? file_get_contents($syncFile) : 0;
+if (time() - $lastSync > 86400) {
+    echo "Syncing Walled Garden domains to all online routers...\n";
+    global $hook_registered;
+    $wg_domains = [];
+    if (is_array($hook_registered)) {
+        foreach ($hook_registered as $hook) {
+            if ($hook['action'] == 'walled_garden_domains' && function_exists($hook['function'])) {
+                $plugin_domains = call_user_func($hook['function']);
+                if (is_array($plugin_domains)) {
+                    $wg_domains = array_merge($wg_domains, $plugin_domains);
+                }
+            }
+        }
+    }
+    $wg_domains = array_unique($wg_domains);
+    
+    require_once 'autoload/PEAR2/Autoload.php';
+    $routers = ORM::for_table('tbl_routers')->where('status', 'Online')->find_many();
+    foreach ($routers as $router) {
+        try {
+            $client = new PEAR2\Net\RouterOS\Client($router->ip_address, $router->username, $router->password);
+            
+            $printReq = new PEAR2\Net\RouterOS\Request('/ip/hotspot/walled-garden/print');
+            $printReq->setArgument('.proplist', '.id');
+            $printReq->setQuery(PEAR2\Net\RouterOS\Query::where('comment', 'phpnuxbill_gw'));
+            $responses = $client->sendSync($printReq);
+            foreach ($responses as $response) {
+                if ($response->getType() === PEAR2\Net\RouterOS\Response::TYPE_DATA) {
+                    $removeReq = new PEAR2\Net\RouterOS\Request('/ip/hotspot/walled-garden/remove');
+                    $removeReq->setArgument('numbers', $response->getProperty('.id'));
+                    $client->sendSync($removeReq);
+                }
+            }
+            
+            foreach ($wg_domains as $domain) {
+                $addReq = new PEAR2\Net\RouterOS\Request('/ip/hotspot/walled-garden/add');
+                $addReq->setArgument('dst-host', $domain);
+                $addReq->setArgument('action', 'accept');
+                $addReq->setArgument('comment', 'phpnuxbill_gw');
+                $client->sendSync($addReq);
+            }
+            echo "Synced Walled Garden to {$router->name}\n";
+        } catch (Exception $e) {
+            echo "Failed to sync Walled Garden to {$router->name}: " . $e->getMessage() . "\n";
+        }
+    }
+    file_put_contents($syncFile, time());
+}
+
 flock($lock, LOCK_UN);
 fclose($lock);
 unlink($lockFile);
