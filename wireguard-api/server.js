@@ -77,6 +77,9 @@ app.delete('/peers/:pubkey', (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`WireGuard Sidecar API listening on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`WireGuard Sidecar API listening on port ${PORT}`);
+    });
+}
+module.exports = app;

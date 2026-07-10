@@ -105,7 +105,11 @@ docker compose -f docker-compose.test.yml up -d
 
 ## Other
 
-- No tests, no lint, no typecheck, no CI
+- Lint, typecheck, and CI are currently not set up.
+- **Testing:** We now encourage testing for critical workflows (e.g., auto-provisioning, billing, IP allocation). **Important:** To prevent environment issues (like missing PHP extensions), tests that can be run inside Docker containers *must* be run using Docker, rather than installing dependencies on the host machine.
+  - **PHPUnit:** Placed in `tests/Unit/` and `tests/Integration/`. Run via Docker: `docker exec -it nuxbill-app bash -c "./phpunit.phar"` (or install composer in the container).
+  - **Node.js (Jest):** Used for sidecar APIs (e.g., `wireguard-api/tests/`). Run within the sidecar container environment.
+  - **E2E (Playwright):** Placed in `tests/e2e/`. Use for testing UI polling and complex admin flows.
 - `PRODUCT.md` has brand/design guidance for UI work
 - Config setting `$_app_stage = 'Live'` controls error display
 - Voucher activation flow: `controllers/login.php` handles both voucher-only and voucher-with-registration

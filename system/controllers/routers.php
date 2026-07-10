@@ -117,12 +117,11 @@ switch ($action) {
         $expires = date('Y-m-d H:i:s', time() + 3600);
         
         $last_router = ORM::for_table('tbl_routers')->where_like('ip_address', '10.66.66.%')->order_by_desc('id')->find_one();
-        $next_ip = '10.66.66.2';
-        if ($last_router) {
-            $parts = explode('.', $last_router->ip_address);
-            if (count($parts) == 4) {
-                $next_ip = '10.66.66.' . ($parts[3] + 1);
-            }
+        try {
+            $next_ip = WgHelper::getNextIp($last_router ? $last_router->ip_address : null);
+        } catch(Exception $e) {
+            echo json_encode(['status' => 'error', 'error' => $e->getMessage()]);
+            exit;
         }
         
         $d = ORM::for_table('tbl_provisioning_tokens')->create();

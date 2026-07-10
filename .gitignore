@@ -61,3 +61,11 @@ docs/**
 !docs/insomnia.rest.json
 !system/uploads/paid.png
 system/uploads/invoices/**
+
+# Testing Output & Dependencies
+node_modules/
+.phpunit.result.cache
+phpunit.phar
+playwright-report/
+test-results/
+playwright/.cache/

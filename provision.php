@@ -7,13 +7,24 @@ if (empty($token)) {
 }
 
 try {
+    ORM::raw_execute("CREATE TABLE IF NOT EXISTS `tbl_provisioning_tokens` (
+        `id` int NOT NULL AUTO_INCREMENT,
+        `token` varchar(64) NOT NULL,
+        `expires_at` datetime NOT NULL,
+        `assigned_ip` varchar(32) NOT NULL,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     ORM::raw_execute("ALTER TABLE `tbl_routers` ADD `wg_public_key` varchar(64) DEFAULT NULL;");
 } catch(Exception $e) {}
 
-$record = ORM::for_table('tbl_provisioning_tokens')
-    ->where('token', $token)
-    ->where_raw('expires_at > NOW()')
-    ->find_one();
+try {
+    $record = ORM::for_table('tbl_provisioning_tokens')
+        ->where('token', $token)
+        ->where_raw('expires_at > NOW()')
+        ->find_one();
+} catch (Exception $e) {
+    $record = null;
+}
 
 if (!$record) {
     die("Token invalid or expired.");
